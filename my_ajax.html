@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AJAX CRUD</title>
+  </head>
+  <body>
+    <div>
+      <div id="message"></div>
+      
+      <div id="addForm">
+        <h2>Add User</h2>
+        <div>
+          <label for="name">Name:</label>
+          <input type="text" id="name" />
+        </div>
+        <div>
+          <label for="email">Email:</label>
+          <input type="email" id="email" />
+        </div>
+        <div>
+          <label for="age">Age:</label>
+          <input type="number" id="age" />
+        </div>
+        <div>
+          <label for="city">City:</label>
+          <input type="text" id="city" />
+        </div>
+        <div>
+          <button id="btnAdd">Add</button>
+        </div>
+      </div>
+      
+      <div id="editForm" style="display: none;">
+        <h2>Edit User</h2>
+        <input type="hidden" id="editId" />
+        <div>
+          <label for="editName">Name:</label>
+          <input type="text" id="editName" />
+        </div>
+        <div>
+          <label for="editEmail">Email:</label>
+          <input type="email" id="editEmail" />
+        </div>
+        <div>
+          <label for="editAge">Age:</label>
+          <input type="number" id="editAge" />
+        </div>
+        <div>
+          <label for="editCity">City:</label>
+          <input type="text" id="editCity" />
+        </div>
+        <div>
+          <button id="btnUpdate">Update</button>
+          <button id="btnCancel">Cancel</button>
+        </div>
+      </div>
+      
+      <div>
+        <h2>User List</h2>
+        <button id="btnList">Refresh</button>
+        <div id="contents"></div>
+      </div>
+    </div>
+    
+    <script>
+      window.onload = function() {
+        let btnList = document.getElementById("btnList");
+        let btnAdd = document.getElementById("btnAdd");
+        let btnUpdate = document.getElementById("btnUpdate");
+        let btnCancel = document.getElementById("btnCancel");
+        
+        btnList.addEventListener("click", getUsers);
+        btnAdd.addEventListener("click", postData);
+        btnUpdate.addEventListener("click", updateData);
+        btnCancel.addEventListener("click", cancelEdit);
+        
+        getUsers();
+      };
+      
+      window.editUser = editUser;
+      window.deleteData = deleteData;
+      
+      function getUsers() {
+        let contents = document.getElementById("contents");
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", "http://localhost:3001/users");
+        xhr.setRequestHeader("content-type", "application/json");
+        xhr.send();
+        
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            const res = JSON.parse(xhr.response);
+            makeList(res);
+          } else {
+            console.log(xhr.status, xhr.statusText);
+          }
+        };
+      }
+      
+      function makeList(data) {
+        let contents = document.getElementById("contents");
+        contents.innerHTML = "";
+        
+        let table = document.createElement("table");
+        table.border = "1";
+        
+        let thead = document.createElement("thead");
+        let headerRow = document.createElement("tr");
+        let headers = ["ID", "Name", "Email", "Age", "City", "Action"];
+        
+        for (let i = 0; i < headers.length; i++) {
+          let th = document.createElement("th");
+          th.textContent = headers[i];
+          headerRow.appendChild(th);
+        }
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+        
+        let tbody = document.createElement("tbody");
+        
+        for (let key in data) {
+          let row = document.createElement("tr");
+          
+          let idCell = document.createElement("td");
+          idCell.textContent = data[key].id;
+          row.appendChild(idCell);
+          
+          let nameCell = document.createElement("td");
+          nameCell.textContent = data[key].name;
+          row.appendChild(nameCell);
+          
+          let emailCell = document.createElement("td");
+          emailCell.textContent = data[key].email;
+          row.appendChild(emailCell);
+          
+          let ageCell = document.createElement("td");
+          ageCell.textContent = data[key].age;
+          row.appendChild(ageCell);
+          
+          let cityCell = document.createElement("td");
+          cityCell.textContent = data[key].city;
+          row.appendChild(cityCell);
+          
+          let actionCell = document.createElement("td");
+          
+          let editBtn = document.createElement("button");
+          editBtn.textContent = "Edit";
+          editBtn.onclick = (function(id) {
+            return function() {
+              editUser(id);
+            };
+          })(data[key].id);
+          actionCell.appendChild(editBtn);
+          
+          let deleteBtn = document.createElement("button");
+          deleteBtn.textContent = "Delete";
+          deleteBtn.onclick = (function(id) {
+            return function() {
+              deleteData(id);
+            };
+          })(data[key].id);
+          actionCell.appendChild(deleteBtn);
+          
+          row.appendChild(actionCell);
+          tbody.appendChild(row);
+        }
+        
+        table.appendChild(tbody);
+        contents.appendChild(table);
+      }
+      
+      function postData() {
+        let name = document.getElementById("name");
+        let email = document.getElementById("email");
+        let age = document.getElementById("age");
+        let city = document.getElementById("city");
+        
+        if (!name.value || !email.value || !age.value || !city.value) {
+          alert("Please fill all fields");
+          return;
+        }
+        
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "http://localhost:3001/users");
+        xhr.setRequestHeader("content-type", "application/json; charset=UTF-8");
+        
+        const data = {
+          name: name.value,
+          email: email.value,
+          age: parseInt(age.value),
+          city: city.value
+        };
+        
+        xhr.send(JSON.stringify(data));
+        
+        xhr.onload = () => {
+          if (xhr.status === 201) {
+            name.value = "";
+            email.value = "";
+            age.value = "";
+            city.value = "";
+            const res = JSON.parse(xhr.response);
+            getUsers();
+          } else {
+            console.log(xhr.status, xhr.statusText);
+          }
+        };
+      }
+      
+      function editUser(id) {
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", "http://localhost:3001/users/" + id);
+        xhr.setRequestHeader("content-type", "application/json");
+        xhr.send();
+        
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            const res = JSON.parse(xhr.response);
+            
+            document.getElementById("editForm").style.display = "block";
+            document.getElementById("addForm").style.display = "none";
+            
+            document.getElementById("editId").value = res.id;
+            document.getElementById("editName").value = res.name;
+            document.getElementById("editEmail").value = res.email;
+            document.getElementById("editAge").value = res.age;
+            document.getElementById("editCity").value = res.city;
+          } else {
+            console.log(xhr.status, xhr.statusText);
+          }
+        };
+      }
+      
+      function updateData() {
+        const id = document.getElementById("editId").value;
+        let name = document.getElementById("editName");
+        let email = document.getElementById("editEmail");
+        let age = document.getElementById("editAge");
+        let city = document.getElementById("editCity");
+        
+        if (!name.value || !email.value || !age.value || !city.value) {
+          alert("Please fill all fields");
+          return;
+        }
+        
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", "http://localhost:3001/users/" + id);
+        xhr.setRequestHeader("content-type", "application/json; charset=UTF-8");
+        
+        const data = {
+          name: name.value,
+          email: email.value,
+          age: parseInt(age.value),
+          city: city.value
+        };
+        
+        xhr.send(JSON.stringify(data));
+        
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            const res = JSON.parse(xhr.response);
+            console.log(res);
+            cancelEdit();
+            getUsers();
+          } else {
+            console.log(xhr.status, xhr.statusText);
+          }
+        };
+      }
+      
+      function cancelEdit() {
+        document.getElementById("editForm").style.display = "none";
+        document.getElementById("addForm").style.display = "block";
+      }
+      
+      function deleteData(id) {
+        if (!confirm("Delete this user?")) {
+          return;
+        }
+        
+        const xhr = new XMLHttpRequest();
+        xhr.open("DELETE", "http://localhost:3001/users/" + id);
+        xhr.send();
+        
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            const res = JSON.parse(xhr.response);
+            console.log(res);
+            getUsers();
+          } else {
+            console.log(xhr.status, xhr.statusText);
+          }
+        };
+      }
+    </script>
+  </body>
+</html>
